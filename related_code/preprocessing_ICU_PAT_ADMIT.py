@@ -181,7 +181,7 @@ if __name__ == '__main__':
   print(neg['LOS'].describe())
   print((pos['PRE_ICU_LOS']).describe())
   print((neg['PRE_ICU_LOS']).describe())  
-  pd.set_option('precision', 1)
+  pd.set_option('display.precision', 1)
   print(pos['AGE'].describe())
   print(neg['AGE'].describe())
   print(pos['NUM_RECENT_ADMISSIONS'].describe())
