@@ -8,7 +8,7 @@ import math
 class Hyperparameters:
   '''Hyperparameters'''
   # data
-  mimic_dir = '../../MIMIC-III Clinical Database/uncompressed/'
+  mimic_dir = '../../mimic3/'
   data_dir = '../data/'
   logdir = '../logdir/' # log directory  
 
