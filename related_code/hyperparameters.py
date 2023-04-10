@@ -43,7 +43,7 @@ class Hyperparameters:
   
   # bootstrapping
   np_seed = 1234
-  bootstrap_samples = 100
+  bootstrap_samples = 20
   
   # bayesian network
   pi = 0.5

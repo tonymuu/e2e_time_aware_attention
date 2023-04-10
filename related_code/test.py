@@ -25,7 +25,7 @@ def round(num):
 if __name__ == '__main__':
   # Load data
   print('Load data...')
-  data = np.load(hp.data_dir + 'data_arrays.npz')
+  data = np.load(hp.data_dir + 'data_arrays.npz', allow_pickle=True)
   test_ids_patients = pd.read_pickle(hp.data_dir + 'test_ids_patients.pkl')
   
   # Patients in test data
