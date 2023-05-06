@@ -88,8 +88,20 @@ def get_trainloader(data, type, shuffle=True, idx=None):
   
 if __name__ == '__main__':
   print('Load data...')
+  # save np.load
+  np_load_old = np.load
+
+  # modify the default parameters of np.load
+  np.load = lambda *a,**k: np_load_old(*a, allow_pickle=True, **k)
+
   data = np.load(hp.data_dir + 'data_arrays.npz')
   trainloader, num_batches, pos_weight = get_trainloader(data, 'TRAIN')
+  bp()
   # vocab_diagnoses, vocab_procedures, vocab_prescriptions = vocab_sizes(data)
+
+  # restore np.load for future normal usage
+  np.load = np_load_old
+
+
   
   
