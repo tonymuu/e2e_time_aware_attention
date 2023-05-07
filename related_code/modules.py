@@ -1168,7 +1168,7 @@ elif hp.net_variant == 'mce_birnn_attention':
 
       return out, []
     
-elif hp.net_variant == 'ode_mce_attention':
+elif hp.net_variant == 'mce_ode_attention':
   # Attention Only
   class Net(nn.Module):
     def __init__(self, num_static, num_dp_codes, num_cp_codes):
@@ -1207,8 +1207,8 @@ elif hp.net_variant == 'ode_mce_attention':
     def forward(self, stat, dp, cp, dp_t, cp_t):
       # Embedding
       ## output dim: batch_size x seq_len x embedding_dim
-      embedded_dp = self.embed_dp(dp)
-      embedded_cp = self.embed_cp(cp)
+      embedded_dp = F.embedding(dp, self.emb_weight_dp, padding_idx=0)
+      embedded_cp = F.embedding(cp, self.emb_weight_cp, padding_idx=0)
 
       # ODE
       ## Round times
@@ -1230,22 +1230,13 @@ elif hp.net_variant == 'ode_mce_attention':
       ode_cp = ode_cp_long.view(cp.size(0), cp.size(1), self.embed_cp_dim)
 
       ## Dropout
-      # ode_dp = self.dropout(ode_dp)
-      # ode_cp = self.dropout(ode_cp)
-
-      # Embedding
-      ## output dim: batch_size x seq_len x embedding_dim
-      embedded_dp = F.embedding(ode_dp, self.emb_weight_dp, padding_idx=0)
-      embedded_cp = F.embedding(ode_cp, self.emb_weight_cp, padding_idx=0)
-      
-      ## Dropout
-      embedded_dp = self.dropout(embedded_dp)
-      embedded_cp = self.dropout(embedded_cp)
+      ode_dp = self.dropout(ode_dp)
+      ode_cp = self.dropout(ode_cp)
       
       # Attention
       ## output dim: batch_size x (embedding_dim+1)
-      attended_dp, weights_dp = self.attention_dp(embedded_dp, (dp > 0).float())
-      attended_cp, weights_cp = self.attention_cp(embedded_cp, (cp > 0).float())
+      attended_dp, weights_dp = self.attention_dp(ode_dp, (dp > 0).float())
+      attended_cp, weights_cp = self.attention_cp(ode_cp, (cp > 0).float())
       
       # Scores
       score_dp = self.fc_dp(self.dropout(attended_dp))
