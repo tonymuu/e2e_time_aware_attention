@@ -40,6 +40,7 @@ class Hyperparameters:
   # net_variant = 'mce_attention'#
   # net_variant = 'mce_birnn'#
   # net_variant = 'mce_birnn_attention'#
+  # net_variant = 'ode_mce_attention'#
   
   # bootstrapping
   np_seed = 1234

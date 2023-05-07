@@ -1167,4 +1167,94 @@ elif hp.net_variant == 'mce_birnn_attention':
       out = self.fc_all(self.dropout(all)).squeeze()
 
       return out, []
+    
+elif hp.net_variant == 'ode_mce_attention':
+  # Attention Only
+  class Net(nn.Module):
+    def __init__(self, num_static, num_dp_codes, num_cp_codes):
+      super(Net, self).__init__()
       
+      # Embedding dimensions
+      self.embed_dp_dim = int(2*np.ceil(num_dp_codes**0.25))+1
+      self.embed_cp_dim = int(2*np.ceil(num_cp_codes**0.25))+1
+
+      # Precomputed embedding weights
+      self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+      self.emb_weight_dp = torch.Tensor(np.load(hp.data_dir + 'emb_weight_dp_13.npy')).to(self.device)
+      self.emb_weight_cp = torch.Tensor(np.load(hp.data_dir + 'emb_weight_cp_11.npy')).to(self.device)
+
+      # Embedding layers
+      self.embed_dp = nn.Embedding(num_embeddings=num_dp_codes, embedding_dim=self.embed_dp_dim, padding_idx=0)
+      self.embed_cp = nn.Embedding(num_embeddings=num_cp_codes, embedding_dim=self.embed_cp_dim, padding_idx=0)
+
+      # ODE layers
+      self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+      self.ode_dp = ODENet(self.device, self.embed_dp_dim, self.embed_dp_dim, output_dim=self.embed_dp_dim, augment_dim=0, time_dependent=False, non_linearity='softplus', tol=1e-3, adjoint=True)
+      self.ode_cp = ODENet(self.device, self.embed_cp_dim, self.embed_cp_dim, output_dim=self.embed_cp_dim, augment_dim=0, time_dependent=False, non_linearity='softplus', tol=1e-3, adjoint=True)
+      
+      # Attention layers
+      self.attention_dp = Attention(embedding_dim=self.embed_dp_dim)
+      self.attention_cp = Attention(embedding_dim=self.embed_cp_dim)
+      
+      # Fully connected output
+      self.fc_dp  = nn.Linear(self.embed_dp_dim, 1)
+      self.fc_cp  = nn.Linear(self.embed_cp_dim, 1)
+      self.fc_all = nn.Linear(num_static + 2, 1)
+      
+      # Others
+      self.dropout = nn.Dropout(p=0.5)
+
+    def forward(self, stat, dp, cp, dp_t, cp_t):
+      # Embedding
+      ## output dim: batch_size x seq_len x embedding_dim
+      embedded_dp = self.embed_dp(dp)
+      embedded_cp = self.embed_cp(cp)
+
+      # ODE
+      ## Round times
+      dp_t = torch.round(100*dp_t)/100
+      cp_t = torch.round(100*cp_t)/100
+      
+      embedded_dp_long = embedded_dp.view(-1, self.embed_dp_dim)
+      dp_t_long = dp_t.view(-1)
+      dp_t_long_unique, inverse_indices = torch.unique(dp_t_long, sorted=True, return_inverse=True)
+      ode_dp_long = self.ode_dp(embedded_dp_long, dp_t_long_unique)
+      ode_dp_long = ode_dp_long[inverse_indices, torch.arange(0, inverse_indices.size(0)), :]
+      ode_dp = ode_dp_long.view(dp.size(0), dp.size(1), self.embed_dp_dim)
+
+      embedded_cp_long = embedded_cp.view(-1, self.embed_cp_dim)
+      cp_t_long = cp_t.view(-1)
+      cp_t_long_unique, inverse_indices = torch.unique(cp_t_long, sorted=True, return_inverse=True)
+      ode_cp_long = self.ode_cp(embedded_cp_long, cp_t_long_unique)
+      ode_cp_long = ode_cp_long[inverse_indices, torch.arange(0, inverse_indices.size(0)), :]
+      ode_cp = ode_cp_long.view(cp.size(0), cp.size(1), self.embed_cp_dim)
+
+      ## Dropout
+      # ode_dp = self.dropout(ode_dp)
+      # ode_cp = self.dropout(ode_cp)
+
+      # Embedding
+      ## output dim: batch_size x seq_len x embedding_dim
+      embedded_dp = F.embedding(ode_dp, self.emb_weight_dp, padding_idx=0)
+      embedded_cp = F.embedding(ode_cp, self.emb_weight_cp, padding_idx=0)
+      
+      ## Dropout
+      embedded_dp = self.dropout(embedded_dp)
+      embedded_cp = self.dropout(embedded_cp)
+      
+      # Attention
+      ## output dim: batch_size x (embedding_dim+1)
+      attended_dp, weights_dp = self.attention_dp(embedded_dp, (dp > 0).float())
+      attended_cp, weights_cp = self.attention_cp(embedded_cp, (cp > 0).float())
+      
+      # Scores
+      score_dp = self.fc_dp(self.dropout(attended_dp))
+      score_cp = self.fc_cp(self.dropout(attended_cp))
+
+      # Concatenate to variable collection
+      all = torch.cat((stat, score_dp, score_cp), dim=1)
+      
+      # Final linear projection
+      out = self.fc_all(self.dropout(all)).squeeze()
+
+      return out, []
