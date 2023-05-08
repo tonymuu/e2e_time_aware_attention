@@ -13,7 +13,18 @@ This repository contains code related to the publication: Benchmarking Deep Lear
 Run `git clone https://github.com/tonymuu/e2e_time_aware_attention.git` to clone the git repo
 
 ### Dependencies
-Run `pip install` from the `related_code` directory of the repo
+Run `pip install` from the `related_code` directory of the repo. This will install the following packages:
+```
+matplotlib==3.7.1
+numpy==1.21.5
+pandas==2.0.0
+scikit_learn==1.2.2
+scipy==1.10.1
+statsmodels==0.13.5
+torch==2.0.0
+torchdiffeq==0.2.3
+tqdm==4.65.0
+```
 
 ### Data Download Instructions
 1. Create a new directory “mimic3” at the same directory of cloned repo (in our case, the cloned repo is located at `~/Projects/cs598-dlh-project/mimic3`)
